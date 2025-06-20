@@ -1,0 +1,48 @@
+{
+  "name": "YouTube API Service",
+  "description": "Production-ready YouTube API with authentication",
+  "keywords": [
+    "youtube",
+    "api",
+    "streaming",
+    "python"
+  ],
+  "website": "https://github.com/yourusername/youtube-api",
+  "repository": "https://github.com/yourusername/youtube-api",
+  "env": {
+    "YOUTUBE_EMAIL": {
+      "description": "Gmail address for YouTube authentication",
+      "required": true
+    },
+    "YOUTUBE_PASSWORD": {
+      "description": "Gmail App Password for authentication",
+      "required": true
+    },
+    "SECRET_KEY": {
+      "description": "Flask secret key",
+      "generator": "secret"
+    },
+    "DATABASE_URL": {
+      "description": "PostgreSQL database URL",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    "heroku-postgresql:mini"
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}

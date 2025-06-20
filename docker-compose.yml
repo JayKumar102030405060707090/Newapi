@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - YOUTUBE_EMAIL=${YOUTUBE_EMAIL}
+      - YOUTUBE_PASSWORD=${YOUTUBE_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key}
+      - DATABASE_URL=postgresql://user:password@db:5432/youtube_api
+    depends_on:
+      - db
+      - worker
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python youtube_cookie_extractor.py
+    environment:
+      - YOUTUBE_EMAIL=${YOUTUBE_EMAIL}
+      - YOUTUBE_PASSWORD=${YOUTUBE_PASSWORD}
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=youtube_api
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
