@@ -49,16 +49,27 @@ class YouTubeIntegration:
             # Check if daemon script exists
             daemon_script = Path("run_youtube_auth.py")
             if not daemon_script.exists():
-                logger.warning("YouTube auth daemon script not found")
+                logger.warning("YouTube auth daemon script not found - creating fallback authentication")
+                self._start_fallback_auth()
                 return
             
             # Start daemon in background
             def run_daemon():
                 try:
-                    # Run the authentication system
-                    subprocess.run([
-                        sys.executable, "run_youtube_auth.py"
-                    ], cwd=Path.cwd())
+                    # Import and run the cookie extractor directly
+                    from youtube_cookie_extractor import YouTubeCookieExtractor
+                    extractor = YouTubeCookieExtractor()
+                    
+                    # Try to refresh cookies immediately
+                    success = extractor.refresh_cookies()
+                    if success:
+                        logger.info("Initial cookie extraction successful")
+                    else:
+                        logger.warning("Initial cookie extraction failed")
+                    
+                    # Start scheduler for continuous operation
+                    extractor.start_scheduler()
+                    
                 except Exception as e:
                     logger.error(f"Daemon startup error: {e}")
             
@@ -68,6 +79,30 @@ class YouTubeIntegration:
             
         except Exception as e:
             logger.warning(f"Could not start auth daemon: {e}")
+    
+    def _start_fallback_auth(self):
+        """Fallback authentication method for environments without daemon script"""
+        try:
+            from youtube_cookie_extractor import YouTubeCookieExtractor
+            
+            def fallback_auth():
+                try:
+                    extractor = YouTubeCookieExtractor()
+                    success = extractor.refresh_cookies()
+                    if success:
+                        logger.info("Fallback authentication successful")
+                    else:
+                        logger.warning("Fallback authentication failed")
+                except Exception as e:
+                    logger.error(f"Fallback authentication error: {e}")
+            
+            # Run fallback auth in background thread
+            auth_thread = threading.Thread(target=fallback_auth, daemon=True)
+            auth_thread.start()
+            logger.info("Started fallback authentication")
+            
+        except Exception as e:
+            logger.error(f"Fallback authentication setup failed: {e}")
     
     def get_current_cookie_file(self) -> Optional[str]:
         """Get the current cookie file path"""

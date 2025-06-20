@@ -1,2 +1,2 @@
-web: gunicorn --bind 0.0.0.0:$PORT main:app
-worker: python youtube_cookie_extractor.py
+web: gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 30 main:app
+worker: python run_youtube_auth.py

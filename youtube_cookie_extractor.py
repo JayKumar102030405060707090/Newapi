@@ -37,15 +37,21 @@ class YouTubeCookieExtractor:
         
         # Load configuration
         try:
+            # Try to load from config.py first
             from config import YOUTUBE_EMAIL, YOUTUBE_PASSWORD, COOKIE_REFRESH_INTERVAL
             self.email = YOUTUBE_EMAIL
             self.password = YOUTUBE_PASSWORD
             self.refresh_interval = COOKIE_REFRESH_INTERVAL / 3600  # Convert to hours
         except ImportError:
-            logger.error("Configuration not found")
-            self.email = None
-            self.password = None
+            # Fallback to environment variables (for Heroku)
+            self.email = os.environ.get('YOUTUBE_EMAIL')
+            self.password = os.environ.get('YOUTUBE_PASSWORD')
             self.refresh_interval = 12
+            
+            if not self.email or not self.password:
+                logger.error("YouTube credentials not found in config.py or environment variables")
+            else:
+                logger.info("Loaded YouTube credentials from environment variables")
     
     def extract_cookies_with_yt_dlp(self):
         """Extract cookies using yt-dlp's built-in authentication"""
