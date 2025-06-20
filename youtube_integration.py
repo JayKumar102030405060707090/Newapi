@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 
 class YouTubeIntegration:
     """Integration layer for production YouTube Authentication System"""
-    
+
     def __init__(self):
         self.cookie_file = "cookies.json"
         self.daemon_process = None
         self.last_cookie_check = 0
         self.cookie_status = {'valid': False, 'last_update': None}
-        
+
         # Check if config exists and start daemon
         self._check_configuration()
         self._start_auth_daemon()
-    
+
     def _check_configuration(self):
         """Check if configuration file exists"""
         try:
@@ -42,7 +42,7 @@ class YouTubeIntegration:
         except Exception as e:
             logger.warning(f"Configuration error: {e}")
         return False
-    
+
     def _start_auth_daemon(self):
         """Start the YouTube authentication daemon in background"""
         try:
@@ -52,39 +52,39 @@ class YouTubeIntegration:
                 logger.warning("YouTube auth daemon script not found - creating fallback authentication")
                 self._start_fallback_auth()
                 return
-            
+
             # Start daemon in background
             def run_daemon():
                 try:
                     # Import and run the cookie extractor directly
                     from youtube_cookie_extractor import YouTubeCookieExtractor
                     extractor = YouTubeCookieExtractor()
-                    
+
                     # Try to refresh cookies immediately
                     success = extractor.refresh_cookies()
                     if success:
                         logger.info("Initial cookie extraction successful")
                     else:
                         logger.warning("Initial cookie extraction failed")
-                    
+
                     # Start scheduler for continuous operation
                     extractor.start_scheduler()
-                    
+
                 except Exception as e:
                     logger.error(f"Daemon startup error: {e}")
-            
+
             self.daemon_thread = threading.Thread(target=run_daemon, daemon=True)
             self.daemon_thread.start()
             logger.info("YouTube authentication daemon started in background")
-            
+
         except Exception as e:
             logger.warning(f"Could not start auth daemon: {e}")
-    
+
     def _start_fallback_auth(self):
         """Fallback authentication method for environments without daemon script"""
         try:
             from youtube_cookie_extractor import YouTubeCookieExtractor
-            
+
             def fallback_auth():
                 try:
                     extractor = YouTubeCookieExtractor()
@@ -95,15 +95,15 @@ class YouTubeIntegration:
                         logger.warning("Fallback authentication failed")
                 except Exception as e:
                     logger.error(f"Fallback authentication error: {e}")
-            
+
             # Run fallback auth in background thread
             auth_thread = threading.Thread(target=fallback_auth, daemon=True)
             auth_thread.start()
             logger.info("Started fallback authentication")
-            
+
         except Exception as e:
             logger.error(f"Fallback authentication setup failed: {e}")
-    
+
     def get_current_cookie_file(self) -> Optional[str]:
         """Get the current cookie file path"""
         # Check if cookie file exists and is recent
@@ -113,7 +113,7 @@ class YouTubeIntegration:
             if file_age < 24 * 60 * 60:  # Less than 24 hours old
                 return self.cookie_file
         return None
-    
+
     def update_ytdl_options(self, ytdl_options: dict) -> dict:
         """Update yt-dlp options with current cookies"""
         cookie_file = self.get_current_cookie_file()
@@ -122,9 +122,9 @@ class YouTubeIntegration:
             logger.debug(f"Using cookie file: {cookie_file}")
         else:
             logger.warning("No valid cookie file available")
-        
+
         return ytdl_options
-    
+
     def get_session_status(self) -> dict:
         """Get status of authentication system"""
         try:
@@ -132,12 +132,12 @@ class YouTubeIntegration:
             cookie_exists = Path(self.cookie_file).exists()
             cookie_age = None
             cookie_size = 0
-            
+
             if cookie_exists:
                 stat = Path(self.cookie_file).stat()
                 cookie_age = time.time() - stat.st_mtime
                 cookie_size = stat.st_size
-            
+
             # Try to get daemon status via API
             daemon_status = "unknown"
             try:
@@ -150,7 +150,7 @@ class YouTubeIntegration:
                     daemon_status = "error"
             except:
                 daemon_status = "not_running"
-            
+
             return {
                 'cookie_file_exists': cookie_exists,
                 'cookie_file_path': self.cookie_file,
@@ -159,16 +159,40 @@ class YouTubeIntegration:
                 'daemon_status': daemon_status,
                 'authentication_system': 'production_ready'
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting session status: {e}")
             return {'error': str(e)}
+
+    def is_daemon_running(self):
+        """Check if authentication daemon is running"""
+        return self.daemon_process is not None and self.daemon_process.poll() is None
+
+    def extract_cookies_once(self):
+        """Extract cookies once without starting daemon (for Heroku)"""
+        try:
+            import subprocess
+            result = subprocess.run([
+                "python", "youtube_cookie_extractor.py", "--once"
+            ], capture_output=True, text=True, timeout=60)
+
+            if result.returncode == 0:
+                logger.info("Cookies extracted successfully for Heroku")
+                return True
+            else:
+                logger.error(f"Cookie extraction failed: {result.stderr}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to extract cookies: {e}")
+            return False
 
 # Global instance
 youtube_integration = YouTubeIntegration()
 
 def get_youtube_integration() -> YouTubeIntegration:
     """Get the global YouTube integration instance"""
+    # For Heroku, start background thread instead of daemon
+
     return youtube_integration
 
 def clean_ytdl_options_with_auth():
@@ -212,9 +236,9 @@ def clean_ytdl_options_with_auth():
         'geo_bypass': True,
         'geo_bypass_country': 'US',
     }
-    
+
     # Add authentication cookies from production system
     integration = get_youtube_integration()
     options = integration.update_ytdl_options(options)
-    
+
     return options

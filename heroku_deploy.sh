@@ -14,6 +14,8 @@ fi
 echo "Setting environment variables..."
 heroku config:set YOUTUBE_EMAIL="pm5763468@gmail.com"
 heroku config:set YOUTUBE_PASSWORD="Pubjmobilemerehe13nhi"
+heroku config:set SECRET_KEY="$(openssl rand -hex 32)"
+heroku config:set FLASK_ENV="production"
 
 # Scale the worker process
 echo "Scaling worker process..."

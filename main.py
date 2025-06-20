@@ -36,8 +36,13 @@ logger = logging.getLogger(__name__)
 YOUTUBE_AUTH_AVAILABLE = False
 try:
     from youtube_integration import get_youtube_integration, clean_ytdl_options_with_auth
-    YOUTUBE_AUTH_AVAILABLE = True
-    logger.info("YouTube authentication integration loaded")
+    # Initialize YouTube authentication on startup
+    if os.environ.get("YOUTUBE_EMAIL") and os.environ.get("YOUTUBE_PASSWORD"):
+        get_youtube_integration()
+        YOUTUBE_AUTH_AVAILABLE = True
+        logger.info("YouTube authentication integration loaded and initialized")
+    else:
+        logger.warning("YouTube credentials not found in environment variables")
 except ImportError as e:
     logger.warning(f"YouTube authentication not available: {e}")
 except Exception as e:
@@ -197,13 +202,14 @@ def cached(timeout=CACHE_TIMEOUT):
 
 def clean_ytdl_options():
     """Generate clean ytdlp options to avoid detection"""
-    if YOUTUBE_AUTH_AVAILABLE:
+    # Always try authenticated options first if credentials are available
+    if os.environ.get("YOUTUBE_EMAIL") and os.environ.get("YOUTUBE_PASSWORD"):
         try:
             return clean_ytdl_options_with_auth()
         except Exception as e:
-            logger.warning(f"Failed to get authenticated options: {e}")
+            logger.warning(f"Failed to get authenticated options, falling back to basic: {e}")
     
-    # Fallback to basic options
+    # Fallback to basic options with better headers for Heroku
     options = {
         "format": "best[height<=720]/best",
         "noplaylist": True,
@@ -213,14 +219,23 @@ def clean_ytdl_options():
         "outtmpl": f"{DOWNLOAD_DIR}/%(id)s.%(ext)s",
         "user_agent": get_random_user_agent(),
         "referer": "https://www.youtube.com/",
+        "extractor_args": {
+            "youtube": {
+                "skip": ["hls", "dash"],
+                "player_skip": ["configs", "webpage"]
+            }
+        },
         "http_headers": {
             "User-Agent": get_random_user_agent(),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-us,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
             "DNT": "1",
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none"
         }
     }
     
@@ -382,7 +397,7 @@ class YouTubeAPIService:
                     "views": 706072166,
                     "publish_time": "2021-05-13",
                     "channel": "Sidhu Moose Wala",
-                    "thumbnail": "https://i.ytimg.com/vi_webp/n_FCrCQ6-bA/maxresdefault.webp",
+                    "thumbnail": "https://i.ytimg.com/vi/n_FCrCQ6-bA/maxresdefault.jpg",
                     "link": "https://www.youtube.com/watch?v=n_FCrCQ6-bA",
                 }]
             
