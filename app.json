@@ -46,3 +46,53 @@
     }
   ]
 }
+{
+  "name": "YouTube API Service",
+  "description": "Production-ready YouTube API with authentication bypass",
+  "repository": "https://github.com/your-username/youtube-api",
+  "logo": "https://img.icons8.com/color/96/000000/youtube-play.png",
+  "keywords": [
+    "youtube",
+    "api",
+    "streaming",
+    "flask",
+    "python"
+  ],
+  "success_url": "/",
+  "env": {
+    "YOUTUBE_EMAIL": {
+      "description": "Your Gmail email address",
+      "required": true
+    },
+    "YOUTUBE_PASSWORD": {
+      "description": "Your Gmail App Password (16 characters)",
+      "required": true
+    },
+    "SECRET_KEY": {
+      "description": "Flask secret key",
+      "generator": "secret"
+    },
+    "FLASK_ENV": {
+      "description": "Flask environment",
+      "value": "production"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    "heroku-postgresql:mini"
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ]
+}
